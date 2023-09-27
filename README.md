@@ -5,9 +5,9 @@ This project is based on a Unity environment to design, train, and evaluate deep
 The environment used in this project is the Reacher environment.
 
 <p align="center">
- <img src="reacher.gif"/>
+ <img src="tennis.png"/>
     <br>
-    <em><b>Unity ML-Agents Reacher Environment</b></em>
+    <em><b>Unity ML-Agents Tennis Environment</b></em>
 </p>
 
 In this environment, a double-jointed arm can move to target locations. A reward of +0.1 is provided for each step that the agent's hand is in the goal location. Thus, the goal of the agent is to maintain its position at the target location for as many time steps as possible.
