@@ -28,7 +28,6 @@ class Agent():
         config = Config.get_config()
         self.state_size = state_size
         self.action_size = action_size
-        self.buffer_size = config.buffer_size
         self.batch_size = config.batch_size
         self.tau = config.tau # interpolation parameter
         self.gamma = config.gamma
@@ -64,30 +63,21 @@ class Agent():
         if self.add_noise:
             self.noise = OUNoise(action_size, config.random_seed)
 
-        # Replay memory
-        self.memory = ReplayBuffer(action_size, self.buffer_size,
-                                   self.batch_size, config.random_seed,
-                                   self.device)
 
-
-    def step(self, state, action, reward, next_state, done):
-        """Save experience in replay memory, and use random sample from buffer 
-           to learn.
+    def step(self, memory):
+        """Use random sample from replay buffer (memory) to learn.
         """
-        # Save experience / reward
-        self.memory.add(state, action, reward, next_state, done)
-
         # Learn after every UPDATE_EVERY time steps and if enough samples 
         # are available in memory
         self.t_step = (self.t_step + 1) % self.update_every
-        if self.t_step == 0 and len(self.memory) > self.batch_size:
-            # update the network NETWORK_UPDATE times
+        if self.t_step == 0 and len(memory) > self.batch_size:
+            # Update the network NETWORK_UPDATE times
             for _ in range(self.network_update):
-                experiences = self.memory.sample()
+                experiences = memory.sample()
                 self.learn(experiences)
 
 
-    def act(self, state):
+    def act(self, state, noise=1.0):
         """Returns actions for given state as per current policy."""
         state = torch.from_numpy(state).float().to(self.device)
         self.actor_local.eval()
@@ -95,7 +85,7 @@ class Agent():
             action = self.actor_local(state).cpu().data.numpy()
         self.actor_local.train()
         if self.add_noise:
-            action += self.noise.sample()
+            action += (self.noise.sample() * noise)
         return np.clip(action, -1, 1)
 
 
@@ -118,7 +108,6 @@ class Agent():
             tuple of (s, a, r, s', done) tuples 
         """
         states, actions, rewards, next_states, dones = experiences
-
         # ---------------------------- update critic ----------------------- #
         # Get predicted next-state actions and Q values from target models
         actions_next = self.actor_target(next_states)
@@ -142,6 +131,8 @@ class Agent():
         # Minimize the loss
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
+        # Clip gradients during training to prevent exploding gradients
+        torch.nn.utils.clip_grad_norm_(self.actor_local.parameters(), 1)
         self.actor_optimizer.step()
 
         # ----------------------- update target networks ------------------- #

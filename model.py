@@ -25,8 +25,12 @@ class Actor(nn.Module):
         Second linear hidden layer
     fc3 : nn.Linear
         Linear output layer
-    bn : nn.BatchNorm1d
-        One dimensional batch normalization layer
+    bn1 : nn.BatchNorm1d
+        One dimensional batch normalization layer for fc2 output
+    bn2 : nn.BatchNorm1d
+        One dimensional batch normalization layer for fc2 output
+    bn3 : nn.BatchNorm1d
+        One dimensional batch normalization layer for fc3 output    
 
     Methods
     -------
@@ -41,9 +45,11 @@ class Actor(nn.Module):
         super(Actor, self).__init__()
         self.seed = torch.manual_seed(seed)
         self.fc1 = nn.Linear(state_size, fc1_units)
-        self.bn = nn.BatchNorm1d(fc1_units)
+        self.bn1 = nn.BatchNorm1d(fc1_units)
         self.fc2 = nn.Linear(fc1_units, fc2_units)
+        self.bn2 = nn.BatchNorm1d(fc2_units)
         self.fc3 = nn.Linear(fc2_units, action_size)
+        self.bn3 = nn.BatchNorm1d(action_size)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -54,9 +60,9 @@ class Actor(nn.Module):
 
     def forward(self, state):
         """Maps states -> actions."""
-        x = F.relu(self.bn(self.fc1(state)))
-        x = F.relu(self.fc2(x))
-        return F.tanh(self.fc3(x))
+        x = F.relu(self.bn1(self.fc1(state)))
+        x = F.relu(self.bn2(self.fc2(x)))
+        return F.tanh(self.bn3(self.fc3(x)))
 
 
 class Critic(nn.Module):
@@ -75,7 +81,7 @@ class Critic(nn.Module):
     fc3 : nn.Linear
         Linear output layer
     bn : nn.BatchNorm1d
-        One dimensional batch normalization layer
+        One dimensional batch normalization layer for fc1 output
 
     Methods
     -------
@@ -85,7 +91,7 @@ class Critic(nn.Module):
         Returns a Q-value for the provided state/action pair.
     """
 
-    def __init__(self, state_size, action_size, seed, 
+    def __init__(self, state_size, action_size,  seed, 
                  fc1_units=128, fc2_units=128):
         """Build actor model and initialize parameters."""
         super(Critic, self).__init__()
@@ -102,9 +108,9 @@ class Critic(nn.Module):
         self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
         self.fc3.weight.data.uniform_(-3e-3, 3e-3)
 
-    def forward(self, state, action):
+    def forward(self, state, actions):
         """Maps (state, action) pairs -> Q-values."""
         x = F.relu(self.bn(self.fc1(state)))
-        x = torch.cat((x, action), dim=1)
+        x = torch.cat((x, actions), dim=1)
         x = F.relu(self.fc2(x))
         return self.fc3(x)
